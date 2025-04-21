@@ -1,0 +1,82 @@
+version: "3.8"
+
+services:
+  subscription_service:
+    build:
+      context: .
+      dockerfile: Dockerfile_sub
+    container_name: subscription_service
+    ports:
+      - "5000:5000"
+    depends_on:
+      db:
+        condition: service_healthy
+      log_microservice:
+        condition: service_started
+    networks:
+      - backend
+    restart: on-failure
+
+  log_microservice:
+    build:
+      context: .
+      dockerfile: Dockerfile_log
+    container_name: log_microservice
+    ports:
+      - "8000:8000"
+    depends_on:
+      db_log:
+        condition: service_healthy
+    networks:
+      - backend
+    restart: on-failure
+    environment:
+      - DB_HOST=db_log
+      - DB_PORT=3306
+      - DB_NAME=logs_db
+      - DB_USER=root
+      - DB_PASS=logroot
+
+  db:
+    image: mysql:5.7
+    container_name: db
+    environment:
+      MYSQL_ROOT_PASSWORD: ijwtbpoys
+      MYSQL_DATABASE: university_db
+    ports:
+      - "3306:3306"
+    volumes:
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+      - mysql_data:/var/lib/mysql
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-pijwtbpoys"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  db_log:
+    image: mysql:5.7
+    container_name: db_log
+    environment:
+      MYSQL_ROOT_PASSWORD: logroot
+      MYSQL_DATABASE: logs_db
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_log_data:/var/lib/mysql
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-plogroot"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+networks:
+  backend:
+
+volumes:
+  mysql_data:
+  mysql_log_data:

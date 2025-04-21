@@ -1,0 +1,15 @@
+FROM python:3.10
+
+WORKDIR /app
+
+COPY main_log.py /app/main.py
+COPY app /app/app
+COPY requirements.txt /app/requirements.txt
+COPY wait-for-it.sh /app/wait-for-it.sh
+
+RUN pip install --no-cache-dir -r requirements.txt
+RUN apt-get update && apt-get install -y netcat-openbsd
+RUN chmod +x /app/wait-for-it.sh
+
+# Use wait-for-it to wait for the database to be ready before starting the app
+CMD ["sh", "-c", "./wait-for-it.sh db_log:3306 -t 60 -- uvicorn main:app --host 0.0.0.0 --port 8000"]
